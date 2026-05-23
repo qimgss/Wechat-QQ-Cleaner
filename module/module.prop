@@ -1,0 +1,7 @@
+id=wechat_qq_cache_cleaner
+name=WeChat/QQ Cache Cleaner
+version=v1.0.0
+versionCode=1
+author=Qimgss
+description=每12小时自动清理微信和QQ缓存。使用Rust库进行高效清理。
+updateJson=

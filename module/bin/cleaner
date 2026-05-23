@@ -1,0 +1,93 @@
+#!/system/bin/sh
+# Cleaner script wrapper
+
+case "$(uname -m)" in
+    x86_64 | amd64)
+        Arch="x86_64"
+        ;;
+    aarch64 | arm64)
+        Arch="arm64-v8a"
+        ;;
+    armv7l | armv7)
+        Arch="armeabi-v7a"
+        ;;
+    i386 | i686)
+        Arch="x86"
+        ;;
+    *)
+        echo "Architecture: Unknown ($ARCH)"
+        ;;
+esac
+
+MODDIR=${0%/*}
+LIB_PATH="$MODDIR/lib/$Archlibwechatqqcleaner.so"
+LOG_FILE="/data/local/tmp/wechat_qq_cleaner.log"
+
+log() {
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" >> "$LOG_FILE"
+}
+
+log "=== Cleanup started ==="
+
+# 尝试使用Rust库
+if [ -f "$LIB_PATH" ]; then
+    log "Using Rust library for cleanup"
+    # 设置库路径并调用
+    LD_LIBRARY_PATH="$MODDIR/lib" "$LIB_PATH" clean_all_cache
+    RUST_RESULT=$?
+    
+    if [ $RUST_RESULT -eq 0 ]; then
+        log "Rust cleanup successful"
+    else
+        log "Rust cleanup failed with code: $RUST_RESULT"
+        # 回退到shell脚本清理
+        log "Falling back to shell script cleanup"
+        clean_with_shell
+    fi
+else
+    log "Rust library not found, using shell script"
+    clean_with_shell
+fi
+
+log "=== Cleanup completed ==="
+
+# Shell脚本清理函数
+clean_with_shell() {
+    log "Shell: Cleaning WeChat cache..."
+    # 微信缓存路径
+    wechat_paths=(
+        "/data/data/com.tencent.mm/cache"
+        "/data/data/com.tencent.mm/files"
+        "/sdcard/Android/data/com.tencent.mm/cache"
+        "/sdcard/Android/data/com.tencent.mm/files"
+        "/sdcard/tencent/MicroMsg"
+    )
+    
+    for path in "${wechat_paths[@]}"; do
+        if [ -d "$path" ]; then
+            # 删除超过12小时的文件
+            find "$path" -type f -mmin +720 -delete 2>/dev/null
+            log "Shell: Cleaned WeChat path: $path"
+        fi
+    done
+    
+    log "Shell: Cleaning QQ cache..."
+    # QQ缓存路径
+    qq_paths=(
+        "/data/data/com.tencent.mobileqq/cache"
+        "/data/data/com.tencent.mobileqq/files"
+        "/sdcard/Android/data/com.tencent.mobileqq/cache"
+        "/sdcard/Android/data/com.tencent.mobileqq/files"
+        "/sdcard/tencent/QQ"
+    )
+    
+    for path in "${qq_paths[@]}"; do
+        if [ -d "$path" ]; then
+            # 删除超过12小时的文件
+            find "$path" -type f -mmin +720 -delete 2>/dev/null
+            log "Shell: Cleaned QQ path: $path"
+        fi
+    done
+}
+
+exit 0
